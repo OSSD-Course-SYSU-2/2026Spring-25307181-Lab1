@@ -7,7 +7,7 @@ struct Index {
   @State sinceLastFour: number = 0
   @State sinceLastFive: number = 0
 
-  // 星星动画相关
+  // 星星动画相关（单抽用）
   @State showStar: boolean = false
   @State starOffsetX: number = 0
   @State starOffsetY: number = -300
@@ -19,9 +19,21 @@ struct Index {
   @State currentPortrait: string = ""
   @State currentCharName: string = ""
 
-  // 十连动画相关
+  // 十连相关
   @State isTenPullAnimating: boolean = false
   @State tenPullResults: string[] = []
+  @State showResultStars: boolean = false
+  @State resultStarsList: string[] = []
+  @State resultStarsColors: string[] = []
+
+  // 视频播放相关
+  @State showVideo: boolean = false
+  @State videoSource: string = ""
+  private videoController: VideoController = new VideoController()
+
+  // 视频时长配置（根据你的视频修改）
+  @State fourStarVideoDuration: number = 4000   // 四星视频4秒
+  @State fiveStarVideoDuration: number = 6000   // 五星视频6秒
 
   // 动画状态
   @State isAnimating: boolean = false
@@ -30,26 +42,18 @@ struct Index {
   // 屏幕宽度
   private screenWidth: number = 360
 
-  // 第一次十连保底五星标志（不显示给用户）
+  // 第一次十连必出五星标志
   private hasGuaranteedFive: boolean = true
-  // 保底五星出现的位置（随机5-8）
-  private guaranteedFiveIndex: number = -1
 
   // 卡池数据
   private fiveStarChars: string[] = ["刻晴", "迪卢克", "七七", "莫娜", "琴", "甘雨", "胡桃"]
   private fourStarChars: string[] = ["班尼特", "诺艾尔", "菲谢尔", "砂糖", "行秋", "重云", "香菱"]
   private threeStarItem: string = "⚔️ 飞天御剑 ⚔️"
 
-  // 角色立绘映射
   private getPortraitPath(charName: string): string {
     let nameMap: Record<string, string> = {
-      "刻晴": "keqing",
-      "迪卢克": "diluc",
-      "七七": "qiqi",
-      "莫娜": "mona",
-      "琴": "qin",
-      "甘雨": "ganyu",
-      "胡桃": "hutao"
+      "刻晴": "keqing", "迪卢克": "diluc", "七七": "qiqi",
+      "莫娜": "mona", "琴": "qin", "甘雨": "ganyu", "胡桃": "hutao"
     }
     let fileName = nameMap[charName]
     if (fileName) {
@@ -58,45 +62,36 @@ struct Index {
     return ""
   }
 
-  // 显示角色立绘弹窗
   private showCharacterPortrait(charName: string) {
     let portraitPath = this.getPortraitPath(charName)
     if (portraitPath) {
       this.currentCharName = charName
       this.currentPortrait = portraitPath
       this.showPortrait = true
-
       setTimeout(() => {
         this.showPortrait = false
       }, 2000)
     }
   }
 
-  // 核心抽卡逻辑（只返回结果，不显示立绘）
-  private performGacha(isTenPull: boolean = false, isGuaranteedPos: boolean = false): string {
-    // 如果是十连且到了保底位置，必出五星
-    if (isTenPull && isGuaranteedPos && this.hasGuaranteedFive) {
-      return this.getRandomFiveStarNoPortrait()
-    }
-
+  private performGacha(_isTenPull: boolean = false): string {
     if (this.sinceLastFive >= 90) {
-      return this.getRandomFiveStarNoPortrait()
+      return this.getRandomFiveStar()
     }
     if (this.sinceLastFour >= 10) {
-      return this.getRandomFourStarNoPortrait()
+      return this.getRandomFourStar()
     }
-
     let rand = Math.floor(Math.random() * 10000)
     if (rand < 60) {
-      return this.getRandomFiveStarNoPortrait()
+      return this.getRandomFiveStar()
     } else if (rand < 660) {
-      return this.getRandomFourStarNoPortrait()
+      return this.getRandomFourStar()
     } else {
-      return this.getThreeStarNoPortrait()
+      return this.getThreeStar()
     }
   }
 
-  private getRandomFiveStarNoPortrait(): string {
+  private getRandomFiveStar(): string {
     let index = Math.floor(Math.random() * this.fiveStarChars.length)
     let char = this.fiveStarChars[index]
     this.sinceLastFive = 0
@@ -104,18 +99,17 @@ struct Index {
     return `★★★★★ ${char}`
   }
 
-  private getRandomFourStarNoPortrait(): string {
+  private getRandomFourStar(): string {
     let index = Math.floor(Math.random() * this.fourStarChars.length)
     let char = this.fourStarChars[index]
     this.sinceLastFour = 0
     return `★★★★ ${char}`
   }
 
-  private getThreeStarNoPortrait(): string {
+  private getThreeStar(): string {
     return `★★★ ${this.threeStarItem}`
   }
 
-  // 获取稀有度对应的星星符号和颜色
   private getStarTextAndColor(result: string): string[] {
     if (result.includes("★★★★★")) {
       return ["⭐", "#FFD700"]
@@ -126,32 +120,26 @@ struct Index {
     }
   }
 
-  // 单抽
+  // ==================== 单抽 ====================
   private wishWithAnimation() {
     if (this.isAnimating) return
-
     this.isAnimating = true
     this.darkOverlayVisible = true
-
     this.sinceLastFour++
     this.sinceLastFive++
-
-    let result = this.performGacha(false, false)
+    let result = this.performGacha(false)
     let starInfoArray = this.getStarTextAndColor(result)
-
     this.starText = starInfoArray[0]
     this.starColor = starInfoArray[1]
     this.showStar = true
     this.starOffsetX = (this.screenWidth / 2) - 32
     this.starOffsetY = -100
-
     let startTime = Date.now()
     let duration = 1500
     let animateInterval = setInterval(() => {
       let elapsed = Date.now() - startTime
       let progress = Math.min(1, elapsed / duration)
       this.starOffsetY = -100 + (800 * progress)
-
       if (progress >= 1) {
         clearInterval(animateInterval)
         this.showStar = false
@@ -162,81 +150,54 @@ struct Index {
     }, 16)
   }
 
-  // 显示单抽结果（动画结束后）
   private displayResult(result: string) {
     let isFiveStar = result.includes("★★★★★")
     let isFourStar = result.includes("★★★★")
-
-    let starEmoji: string
-    let color: string
-    let displayResult: string = result
-
     if (isFiveStar) {
       let charName = result.replace("★★★★★ ", "")
       this.showCharacterPortrait(charName)
-      starEmoji = "✨✨✨✨✨ 金光！！！ ✨✨✨✨✨"
-      color = "#FFD700"
-      displayResult = result.replace("★★★★★ ", "")
-      this.gachaResult = `${starEmoji}\n★★★★★ ${displayResult}\n"我会保护你！"`
+      this.gachaResult = `✨✨✨✨✨ 金光！！！ ✨✨✨✨✨\n★★★★★ ${charName}\n"我会保护你！"`
+      this.resultColor = "#FFD700"
     } else if (isFourStar) {
-      starEmoji = "💜💜💜 紫光 💜💜💜"
-      color = "#9B59B6"
-      displayResult = result.replace("★★★★ ", "")
-      this.gachaResult = `${starEmoji}\n★★★★ ${displayResult}\n"感谢相遇！"`
+      this.gachaResult = `💜💜💜 紫光 💜💜💜\n${result}\n"感谢相遇！"`
+      this.resultColor = "#9B59B6"
     } else {
-      starEmoji = "💙💙💙 蓝光 💙💙💙"
-      color = "#4A90E2"
-      displayResult = result.replace("★★★ ", "")
-      this.gachaResult = `${starEmoji}\n★★★ ${displayResult}\n"下次一定！"`
+      this.gachaResult = `💙💙💙 蓝光 💙💙💙\n${result}\n"下次一定！"`
+      this.resultColor = "#4A90E2"
     }
-
-    this.resultColor = color
     this.historyList.unshift(result)
     if (this.historyList.length > 10) {
       this.historyList.pop()
     }
   }
-
-  // 十连抽
+  // ==================== 十连 ====================
   private wishTenWithAnimation() {
     if (this.isAnimating || this.isTenPullAnimating) return
-
     this.isTenPullAnimating = true
     this.isAnimating = true
     this.darkOverlayVisible = true
-
     let tempLastFour = this.sinceLastFour
     let tempLastFive = this.sinceLastFive
     let tempResults: string[] = []
-    let tempStarTexts: string[] = []
-    let tempStarColors: string[] = []
-
-    // 如果是第一次十连，随机一个位置（3-8之间）出五星，看起来更自然
     let guaranteedPos = -1
     if (this.hasGuaranteedFive) {
-      // 随机位置：3,4,5,6,7,8（避免第一发或最后一发）
       let positions = [3, 4, 5, 6, 7]
       let randomIndex = Math.floor(Math.random() * positions.length)
       guaranteedPos = positions[randomIndex]
       this.hasGuaranteedFive = false
     }
-
     for (let i = 0; i < 10; i++) {
       let currentFour = tempLastFour
       let currentFive = tempLastFive
-
       let result: string
-      // 在指定位置出五星
       if (i === guaranteedPos) {
         let index = Math.floor(Math.random() * this.fiveStarChars.length)
-        let char = this.fiveStarChars[index]
-        result = `★★★★★ ${char}`
+        result = `★★★★★ ${this.fiveStarChars[index]}`
         tempLastFive = 0
         tempLastFour = 0
       } else if (currentFive >= 89) {
         let index = Math.floor(Math.random() * this.fiveStarChars.length)
-        let char = this.fiveStarChars[index]
-        result = `★★★★★ ${char}`
+        result = `★★★★★ ${this.fiveStarChars[index]}`
         tempLastFive = 0
         tempLastFour = 0
       } else if (currentFour >= 9) {
@@ -248,8 +209,7 @@ struct Index {
         let rand = Math.floor(Math.random() * 10000)
         if (rand < 60) {
           let index = Math.floor(Math.random() * this.fiveStarChars.length)
-          let char = this.fiveStarChars[index]
-          result = `★★★★★ ${char}`
+          result = `★★★★★ ${this.fiveStarChars[index]}`
           tempLastFive = 0
           tempLastFour = 0
         } else if (rand < 660) {
@@ -263,55 +223,37 @@ struct Index {
           tempLastFive++
         }
       }
-
       tempResults.push(result)
-      let starInfoArray = this.getStarTextAndColor(result)
-      tempStarTexts.push(starInfoArray[0])
-      tempStarColors.push(starInfoArray[1])
     }
-
+    let hasFiveStar = tempResults.some(r => r.includes("★★★★★"))
+    let starTexts: string[] = []
+    let starColors: string[] = []
+    for (let result of tempResults) {
+      let info = this.getStarTextAndColor(result)
+      starTexts.push(info[0])
+      starColors.push(info[1])
+    }
+    this.resultStarsList = starTexts
+    this.resultStarsColors = starColors
     this.tenPullResults = tempResults
-    this.showNextStar(0, tempResults, tempStarTexts, tempStarColors)
+
+    // 根据是否有五星选择视频和时长
+    this.videoSource = hasFiveStar ? "five_star.mp4" : "four_star.mp4"
+    let videoDuration = hasFiveStar ? this.fiveStarVideoDuration : this.fourStarVideoDuration
+
+    this.showVideo = true
+    setTimeout(() => {
+      this.showVideo = false
+      this.showResultStars = true
+      this.darkOverlayVisible = false
+    }, videoDuration)
   }
 
-  // 依次显示星星
-  private showNextStar(index: number, results: string[], starTexts: string[], starColors: string[]) {
-    if (index >= 10) {
-      setTimeout(() => {
-        this.finishTenPull(results)
-      }, 500)
-      return
-    }
-
-    this.starText = starTexts[index]
-    this.starColor = starColors[index]
-    this.showStar = true
-    this.starOffsetX = (this.screenWidth / 2) - 32
-    this.starOffsetY = -100
-
-    let startTime = Date.now()
-    let duration = 800
-    let animateInterval = setInterval(() => {
-      let elapsed = Date.now() - startTime
-      let progress = Math.min(1, elapsed / duration)
-      this.starOffsetY = -100 + (800 * progress)
-
-      if (progress >= 1) {
-        clearInterval(animateInterval)
-        this.showStar = false
-        setTimeout(() => {
-          this.showNextStar(index + 1, results, starTexts, starColors)
-        }, 200)
-      }
-    }, 16)
-  }
-
-  // 完成十连（动画结束后）
-  private finishTenPull(results: string[]) {
+  private finishTenPull() {
+    let results = this.tenPullResults
     let fiveStarCount = 0
     let fourStarCount = 0
     let fiveStarChars: string[] = []
-
     for (let result of results) {
       if (result.includes("★★★★★")) {
         fiveStarCount++
@@ -322,11 +264,9 @@ struct Index {
       }
       this.historyList.unshift(result)
     }
-
     while (this.historyList.length > 10) {
       this.historyList.pop()
     }
-
     for (let i = 0; i < 10; i++) {
       let result = results[i]
       if (result.includes("★★★★★")) {
@@ -340,7 +280,6 @@ struct Index {
         this.sinceLastFive++
       }
     }
-
     let summary = `🎉 【十连抽汇总】 🎉\n`
     summary += `⭐ 五星: ${fiveStarCount} 个\n`
     summary += `💜 四星: ${fourStarCount} 个\n`
@@ -349,28 +288,26 @@ struct Index {
     for (let item of results) {
       summary += item + "\n"
     }
-
     this.gachaResult = summary
     this.resultColor = "#333333"
     this.isTenPullAnimating = false
     this.isAnimating = false
-    this.darkOverlayVisible = false
-
-    // 十连结束后，依次显示五星立绘
+    this.showResultStars = false
     this.showPortraitsFromList(fiveStarChars, 0)
   }
 
-  // 依次显示立绘
   private showPortraitsFromList(charNames: string[], index: number) {
     if (index >= charNames.length) return
-
     this.showCharacterPortrait(charNames[index])
     setTimeout(() => {
       this.showPortraitsFromList(charNames, index + 1)
     }, 2200)
   }
 
-  // 重置游戏
+  private onStarsClicked() {
+    this.finishTenPull()
+  }
+
   private resetGame() {
     if (this.isAnimating) return
     this.historyList = []
@@ -380,6 +317,8 @@ struct Index {
     this.gachaResult = "数据已重置，开始新的旅程吧"
     this.resultColor = "#333333"
     this.showStar = false
+    this.showVideo = false
+    this.showResultStars = false
     this.isTenPullAnimating = false
     this.isAnimating = false
     this.darkOverlayVisible = false
@@ -460,20 +399,24 @@ struct Index {
         .borderRadius(12)
         .margin({ bottom: 15 })
 
-        Button("重置进度")
-          .fontSize(14)
-          .height(36)
-          .width("40%")
-          .backgroundColor("#909399")
-          .borderRadius(18)
-          .enabled(!this.isAnimating)
-          .onClick(() => { this.resetGame() })
+        Row() {
+          Button("重置进度")
+            .fontSize(14)
+            .height(36)
+            .layoutWeight(1)
+            .backgroundColor("#909399")
+            .borderRadius(18)
+            .enabled(!this.isAnimating)
+            .onClick(() => { this.resetGame() })
+        }
+        .width("80%")
+        .margin({ bottom: 20 })
       }
       .width("100%")
       .height("100%")
       .backgroundColor("#FFFFFF")
       .opacity(this.darkOverlayVisible ? 0.3 : 1)
-      .onAreaChange((oldValue: Area, newValue: Area) => {
+      .onAreaChange((_oldValue: Area, newValue: Area) => {
         this.screenWidth = newValue.width as number
       })
 
@@ -485,6 +428,71 @@ struct Index {
           .shadow({ radius: 30, color: this.starColor, offsetX: 0, offsetY: 0 })
       }
 
+      if (this.showResultStars) {
+        Column() {
+          Text("✨ 十连结果 ✨")
+            .fontSize(20)
+            .fontWeight(FontWeight.Bold)
+            .margin({ bottom: 20 })
+          Column() {
+            Row() {
+              ForEach([0, 1, 2, 3, 4], (i: number) => {
+                if (i < this.resultStarsList.length) {
+                  Text(this.resultStarsList[i])
+                    .fontSize(40)
+                    .fontColor(this.resultStarsColors[i])
+                    .margin({ left: 10, right: 10 })
+                }
+              })
+            }
+            .justifyContent(FlexAlign.Center)
+            .margin({ bottom: 15 })
+            Row() {
+              ForEach([5, 6, 7, 8, 9], (i: number) => {
+                if (i < this.resultStarsList.length) {
+                  Text(this.resultStarsList[i])
+                    .fontSize(40)
+                    .fontColor(this.resultStarsColors[i])
+                    .margin({ left: 10, right: 10 })
+                }
+              })
+            }
+            .justifyContent(FlexAlign.Center)
+          }
+          Button("查看详情")
+            .fontSize(16)
+            .height(44)
+            .width("60%")
+            .backgroundColor("#66B1FF")
+            .borderRadius(22)
+            .margin({ top: 30 })
+            .onClick(() => { this.onStarsClicked() })
+        }
+        .width("100%")
+        .height("100%")
+        .justifyContent(FlexAlign.Center)
+        .alignItems(HorizontalAlign.Center)
+        .backgroundColor("rgba(0,0,0,0.85)")
+        .onClick(() => { this.onStarsClicked() })
+      }
+
+      if (this.showVideo) {
+        Stack() {
+          Video({
+            src: $rawfile(this.videoSource),
+            controller: this.videoController
+          })
+            .width("100%")
+            .height("100%")
+            .autoPlay(true)
+            .controls(false)
+            .objectFit(ImageFit.Contain)
+        }
+        .width("100%")
+        .height("100%")
+        .backgroundColor("#000000")
+      }
+
       if (this.showPortrait && this.currentPortrait) {
         Column() {
           Column() {
@@ -493,13 +501,11 @@ struct Index {
               .height(200)
               .objectFit(ImageFit.Contain)
               .borderRadius(20)
-
             Text(this.currentCharName)
               .fontSize(20)
               .fontWeight(FontWeight.Bold)
               .fontColor("#FFD700")
               .margin({ top: 10 })
-
             Text("★★★★★")
               .fontSize(16)
               .fontColor("#FFD700")
@@ -515,9 +521,7 @@ struct Index {
         .justifyContent(FlexAlign.Center)
         .alignItems(HorizontalAlign.Center)
         .backgroundColor("rgba(0,0,0,0.7)")
-        .onClick(() => {
-          this.showPortrait = false
-        })
+        .onClick(() => { this.showPortrait = false })
       }
     }
     .width("100%")
