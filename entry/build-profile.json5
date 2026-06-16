@@ -24,10 +24,15 @@
   ],
   "targets": [
     {
-      "name": "default"
+      "name": "default",
+      "runtimeOS": "HarmonyOS"
     },
     {
-      "name": "ohosTest",
+      "name": "tablet",
+      "runtimeOS": "HarmonyOS"
+    },
+    {
+      "name": "ohosTest"
     }
   ]
 }
