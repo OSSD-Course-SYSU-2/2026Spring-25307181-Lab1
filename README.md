@@ -44,9 +44,9 @@
 
 玩家可以采用十连抽和单抽的形式进行抽卡
 
-![抽卡界面截图](https://github.com/feng-yue995/2026Spring-25307181-Lab1/raw/master/jietu/2.png)
+![抽卡界面截图](jietu/2.png)
 
-![统计面板截图](https://github.com/feng-yue995/2026Spring-25307181-Lab1/raw/master/jietu/3.png)
+![统计面板截图](jietu/3.png)
 
 
 
