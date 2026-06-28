@@ -35,8 +35,11 @@
 
 详细介绍：
 打开应用后界面为（手机端）：
+![主界面截图](https://github.com/feng-yue995/2026Spring-25307181-Lab1/raw/main/jietu/1.png)
 
-![Uploading 4e73a4e6de666cf271d7eadf3362878e.png…]()
+![抽卡界面截图](https://github.com/feng-yue995/2026Spring-25307181-Lab1/raw/main/jietu/2.png)
+
+![统计面板截图](https://github.com/feng-yue995/2026Spring-25307181-Lab1/raw/main/jietu/3.png)
 
 
 
