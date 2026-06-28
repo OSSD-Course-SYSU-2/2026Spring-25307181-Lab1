@@ -36,6 +36,8 @@
 详细介绍：
 打开应用后界面为（手机端）：
 ![主界面截图](https://github.com/feng-yue995/2026Spring-25307181-Lab1/raw/master/jietu/1.png)
+<img width="236" height="520" alt="4e73a4e6de666cf271d7eadf3362878e" src="https://github.com/user-attachments/assets/fc9cbdb0-2e25-4203-84e1-53fe25a50da2" />
+
 
 
 
